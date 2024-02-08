@@ -337,9 +337,9 @@ class CardLayout(ABC):
         self,
         title,
         subtitle,
-        artist,
-        image_path,
-        background,
+        background=ASSET_DIR / "background.png",
+        artist=None,
+        image_path=None,
         border_color="red",
         border_front=(0, 0, 0, 0),  # uninitialized
         border_back=(0, 0, 0, 0),  # uninitialized
@@ -347,6 +347,7 @@ class CardLayout(ABC):
         height=0,  # uninitialized
         bleed=0,  # uninitialized
         fonts=FreeFonts(),
+        **kwargs,
     ):
         self.frames = []
         self.title = title
@@ -742,10 +743,6 @@ class SuperEpicCard(EpicCard):
 class MonsterCardLayout(CardLayout):
     def __init__(
         self,
-        title,
-        subtitle,
-        artist,
-        image_path,
         armor_class,
         max_hit_points,
         speed,
@@ -759,13 +756,14 @@ class MonsterCardLayout(CardLayout):
         experience_points,
         source,
         attributes,
-        abilities,
-        actions,
-        reactions,
-        legendary,
+        abilities=None,
+        actions=None,
+        reactions=None,
+        legendary=None,
+        image_path=ASSET_DIR / "placeholder_monster.png",
         **kwargs,
     ):
-        super().__init__(title, subtitle, artist, image_path, **kwargs)
+        super().__init__(image_path=image_path, **kwargs)
         self.armor_class = armor_class
         self.max_hit_points = max_hit_points
         self.speed = speed
@@ -1020,14 +1018,15 @@ class ItemCardLayout(CardLayout):
         self,
         title,
         subtitle,
-        artist,
-        image_path,
         category,
-        subcategory,
         description,
+        subcategory=None,
+        image_path=ASSET_DIR / "placeholder_item.png",
         **kwargs,
     ):
-        super().__init__(title, subtitle, artist, image_path, **kwargs)
+        super().__init__(
+            title=title, subtitle=subtitle, image_path=image_path, **kwargs
+        )
         self.category = category
         self.subcategory = subcategory
         self.description = description
@@ -1274,46 +1273,16 @@ if __name__ == "__main__":
                     )
                 )
 
-        if args.type == "monster":
+        if entry.get("type") == None or entry.get("type") == "monster":
             card = MonsterCard(
-                title=entry["title"],
-                subtitle=entry["subtitle"],
-                artist=entry.get("artist", None),
-                image_path=image_path or ASSET_DIR / "placeholder_monster.png",
+                **entry,
                 background=args.background,
-                armor_class=entry["armor_class"],
-                max_hit_points=entry["max_hit_points"],
-                speed=entry["speed"],
-                strength=entry["strength"],
-                dexterity=entry["dexterity"],
-                constitution=entry["constitution"],
-                intelligence=entry["intelligence"],
-                wisdom=entry["wisdom"],
-                charisma=entry["charisma"],
-                challenge_rating=entry["challenge_rating"],
-                experience_points=entry["experience_points"],
-                source=entry["source"],
-                attributes=entry["attributes"],
-                abilities=entry.get("abilities", None),
-                actions=entry.get("actions", None),
-                reactions=entry.get("reactions", None),
-                legendary=entry.get("legendary", None),
-                fonts=fonts,
-                border_color=entry.get("color", "red"),
                 bleed=args.bleed,
             )
-        elif args.type == "item":
+        elif entry.get("type") == "item":
             card = ItemCard(
-                title=entry["title"],
-                subtitle=entry["subtitle"],
-                artist=entry.get("artist", None),
-                image_path=image_path or ASSET_DIR / "placeholder_item.png",
+                **entry,
                 background=args.background,
-                description=entry["description"],
-                category=entry["category"],
-                subcategory=entry.get("subcategory", None),
-                fonts=fonts,
-                border_color=entry.get("color", "red"),
                 bleed=args.bleed,
             )
 
