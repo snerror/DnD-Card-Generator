@@ -9,62 +9,12 @@ from reportlab.lib.units import mm
 from reportlab.pdfgen import canvas
 from fonts import FreeFonts, AccurateFonts
 from generator import MonsterCard, ItemCard
+from export import ExportCards
 from card_item import *
 from card_monster import *
 
 
 ASSET_DIR = pathlib.Path(__file__).parent.resolve() / "assets"
-
-
-def draw_cards_canvas(canvas, cards, invert=False):
-    def mix_array(arr, segment_size):
-        num_segments = len(arr) // segment_size + (
-            1 if len(arr) % segment_size != 0 else 0
-        )
-
-        new_order = []
-        for i in range(num_segments):
-            start = i * segment_size
-            end = min(start + segment_size, len(arr))
-            segment = arr[start:end]
-
-            segment = segment[::-1]
-
-            new_order.extend(segment)
-
-        return new_order
-
-    card_width = 63 * mm
-    card_height = 89 * mm
-
-    cards_per_row = math.floor(A4[0] / card_width)
-    rows_per_page = math.floor(A4[1] / card_height)
-
-    x = 0 if invert == False else A4[0] - (card_width * cards_per_row)
-    y = A4[1] - card_height
-
-    current_col, current_row = 0, 0
-    i = 0
-
-    if invert:
-        cards = mix_array(cards, cards_per_row)
-
-    for card in cards:
-        card.draw(canvas, x, y, front=invert)
-
-        current_col += 1
-        x += card_width
-        if current_col >= cards_per_row:
-            current_row += 1
-            current_col = 0
-            x = 0 if invert == False else A4[0] - (card_width * cards_per_row)
-            y -= card_height
-            if current_row >= rows_per_page:
-                canvas.showPage()
-                current_row, current_col = 0, 0
-                x, y = 0, A4[1] - card_height
-
-        i += 1
 
 
 def ExistingFile(p):
@@ -79,15 +29,6 @@ def ExistingFile(p):
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description="Generate D&D cards.")
-    parser.add_argument(
-        "-t",
-        "--type",
-        help="What type of cards to generate",
-        action="store",
-        default="monster",
-        choices=["monster", "item"],
-        dest="type",
-    )
     parser.add_argument(
         "-o",
         "--out",
@@ -120,6 +61,15 @@ if __name__ == "__main__":
         action="store",
         default=0,
         type=lambda b: float(b) * mm,
+    )
+    parser.add_argument(
+        "-e",
+        "--export",
+        help="Export as single cards or as a grid",
+        action="store",
+        default="single",
+        choices=["single", "grid"],
+        dest="export",
     )
     background_group = parser.add_mutually_exclusive_group()
     background_group.add_argument(
@@ -194,14 +144,10 @@ if __name__ == "__main__":
         print("No cards to generate")
         exit()
 
-    max_cards = 9
-    pages_needed = math.ceil(len(cards) / max_cards)
-
-    for i in range(pages_needed):
-        c = cards[i * max_cards : i * max_cards + max_cards]
-        draw_cards_canvas(canvas, c, False)
-        canvas.showPage()
-        draw_cards_canvas(canvas, c, True)
-        canvas.showPage()
+    export = ExportCards(cards, canvas)
+    if args.export == "grid":
+        export.export_grid()
+    else:
+        export.export_singles()
 
     canvas.save()

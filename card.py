@@ -87,7 +87,8 @@ class CardLayout(ABC):
         canvas.setPageSize(A4)
 
     def draw(self, canvas, split, x=0, y=0):
-        self._draw_front(canvas, x, y)
+        self.draw_front(canvas, x, y)
+        self.draw_back(canvas, split, x + self.width, y)
 
     def draw_front(self, canvas, x=0, y=0):
         self._draw_front(canvas, x, y)
@@ -530,3 +531,27 @@ def best_orientation(image_path, card_width, card_height):
         return Orientation.NORMAL
     else:
         return Orientation.TURN90
+
+def get_card_width(card_type):
+    if card_type == "small":
+        return 63 * mm
+    elif card_type == "large":
+        return 126 * mm
+    elif card_type == "epic":
+        return 189 * mm
+    elif card_type == "super-epic":
+        return 252 * mm
+    else:
+        raise ValueError("Invalid card type: {}".format(card_type))
+
+def get_card_height(card_type):
+    if card_type == "small":
+        return 89 * mm
+    elif card_type == "large":
+        return 89 * mm
+    elif card_type == "epic":
+        return 126 * mm
+    elif card_type == "super-epic":
+        return 189 * mm
+    else:
+        raise ValueError("Invalid card type: {}".format(card_type))

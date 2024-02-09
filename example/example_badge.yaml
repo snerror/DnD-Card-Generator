@@ -1,6 +1,6 @@
 - title: Badge of having a very very very very long name
   subtitle: Rare (requires attunement, and a really really really really long backstory for your name)
-  image_path: badge.png
+  # image_path: badge.png
   artist: Public Domain
   description: 
     - Wearing this amulet will add a minimum of 10d8 syllables to your name. This effect is permanent, even once the amulet is removed. The effect stacks every time this amulet is worn.
@@ -9,4 +9,5 @@
     - Sticky:
   category: Woundrous item
   subcategory: Badge
+  type: item
 
