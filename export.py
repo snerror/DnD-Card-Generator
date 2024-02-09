@@ -1,13 +1,7 @@
 import math
-import yaml
-import argparse
-import pathlib
 
-from reportlab.pdfbase.ttfonts import TTFError
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.units import mm
-from reportlab.pdfgen import canvas
-from fonts import FreeFonts, AccurateFonts
 from generator import MonsterCard, ItemCard
 from card import get_card_width, get_card_height
 from card_item import *
@@ -34,10 +28,12 @@ class ExportCards:
 
         for i in range(pages_needed):
             c = self.cards[i * max_cards : i * max_cards + max_cards]
+
+            while len(c) < max_cards:
+                c.append(self.empty_card())
+
             self.draw_cards_grid(c, False)
-            self.canvas.showPage()
             self.draw_cards_grid(c, True)
-            self.canvas.showPage()
 
     def draw_cards_grid(self, cards, invert=False):
         card_width = 63 * mm
@@ -88,3 +84,6 @@ class ExportCards:
             new_order.extend(segment)
 
         return new_order
+
+    def empty_card(self):
+        return ItemCard(title="", subtitle="", description="", category="")
