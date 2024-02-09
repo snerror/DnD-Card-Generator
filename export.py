@@ -17,8 +17,8 @@ class ExportCards:
         self.canvas.setPageSize((get_card_width("small") * 2, get_card_height("small")))
 
         for card in self.cards:
-            card.draw(self.canvas, 0, 0, True)
-            card.draw(self.canvas, get_card_width("small"), 0, False)
+            card.draw(self.canvas, 0, 0, False)
+            card.draw(self.canvas, get_card_width("small"), 0, True)
             self.canvas.showPage()
 
     # TODO - This is a bit of a mess, needs to be refactored and finished

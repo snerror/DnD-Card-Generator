@@ -31,9 +31,9 @@ class CardGenerator(ABC):
             try:
                 card_layout = size(*self._args, **self._kwargs)
                 if front:
-                    card_layout.draw_front(canvas, x, y)
-                else:
                     card_layout.draw_back(canvas, split, x, y)
+                else:
+                    card_layout.draw_front(canvas, x, y)
                 break
             except TemplateTooSmall:
                 # Reset the page
