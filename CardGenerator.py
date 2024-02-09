@@ -15,6 +15,7 @@ from reportlab.lib import utils
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.pdfbase.ttfonts import TTFError
+from reportlab.lib.pagesizes import A4
 from reportlab.lib.units import mm
 from reportlab.lib.enums import TA_CENTER
 from reportlab.pdfgen import canvas
@@ -29,6 +30,59 @@ from svglib.svglib import svg2rlg
 
 
 ASSET_DIR = pathlib.Path(__file__).parent.resolve() / "assets"
+
+
+def draw_cards_canvas(canvas, cards, invert=False):
+    card_width = 63 * mm
+    card_height = 89 * mm
+
+    cards_per_row = math.floor(A4[0] / card_width)
+    rows_per_page = math.floor(A4[1] / card_height)
+
+    x = 0 if invert == False else A4[0] - (card_width * cards_per_row)
+    y = A4[1] - card_height
+
+    current_col, current_row = 0, 0
+    i = 0
+
+    if invert:
+        cards = mix_array(cards, cards_per_row)
+
+    for card in cards:
+        card.draw(canvas, x, y, front=invert)
+
+        current_col += 1
+        x += card_width
+        if current_col >= cards_per_row:
+            current_row += 1
+            current_col = 0
+            x = 0 if invert == False else A4[0] - (card_width * cards_per_row)
+            y -= card_height
+            if current_row >= rows_per_page:
+                canvas.showPage()
+                current_row, current_col = 0, 0
+                x, y = 0, A4[1] - card_height
+
+        i += 1
+
+
+def mix_array(arr, segment_size):
+    # Determine the number of segments
+    num_segments = len(arr) // segment_size + (1 if len(arr) % segment_size != 0 else 0)
+
+    # Process each segment
+    new_order = []
+    for i in range(num_segments):
+        start = i * segment_size
+        end = min(start + segment_size, len(arr))
+        segment = arr[start:end]
+
+        # Reverse the segment
+        segment = segment[::-1]
+
+        new_order.extend(segment)
+
+    return new_order
 
 
 def ExistingFile(p):
@@ -340,7 +394,7 @@ class CardLayout(ABC):
         background=ASSET_DIR / "background.png",
         artist=None,
         image_path=None,
-        border_color="red",
+        border_color="#ec1923",
         border_front=(0, 0, 0, 0),  # uninitialized
         border_back=(0, 0, 0, 0),  # uninitialized
         width=0,  # uninitialized
@@ -371,22 +425,26 @@ class CardLayout(ABC):
         )
 
     def set_size(self, canvas):
-        canvas.setPageSize((self.width * 2, self.height))
+        canvas.setPageSize(A4)
 
-    def draw(self, canvas, split):
-        self.set_size(canvas)
-        self._draw_front(canvas)
-        self._draw_back(canvas)
-        self.fill_frames(canvas)
-        self._draw_frames(canvas, split)
+    def draw(self, canvas, split, x=0, y=0):
+        self._draw_front(canvas, x, y)
 
-    def fill_frames(self, canvas):
+    def draw_front(self, canvas, x=0, y=0):
+        self._draw_front(canvas, x, y)
+
+    def draw_back(self, canvas, split, x=0, y=0):
+        self._draw_back(canvas, x, y)
+        self.fill_frames(canvas, x, y)
+        self._draw_frames(canvas, split, x, y)
+
+    def fill_frames(self, canvas, x, y):
         pass
 
-    def _draw_front_frame(self, canvas, width, height):
+    def _draw_front_frame(self, canvas, x, y, width, height):
         front_frame = Frame(
-            self.border_front[Border.LEFT],
-            self.border_front[Border.BOTTOM],
+            x + self.border_front[Border.LEFT],
+            y + self.border_front[Border.BOTTOM],
             width - self.border_front[Border.LEFT] - self.border_front[Border.RIGHT],
             height - self.border_front[Border.TOP] - self.border_front[Border.BOTTOM],
             leftPadding=self.TEXT_MARGIN,
@@ -450,9 +508,22 @@ class CardLayout(ABC):
         elements.append(title_paragraph)
         front_frame.addFromList(elements, canvas)
 
-    def _draw_frames(self, canvas, split=False):
+    def _draw_frames(self, canvas, split=False, x=0, y=0):
         frames = iter(self.frames)
         current_frame = next(frames)
+
+        current_frame = Frame(
+            x + self.border_front[Border.LEFT],
+            y + self.border_front[Border.BOTTOM],
+            self.width
+            - self.border_front[Border.LEFT]
+            - self.border_front[Border.RIGHT],
+            self.height - self.border_front[Border.TOP],
+            leftPadding=self.TEXT_MARGIN,
+            bottomPadding=self.TEXT_MARGIN,
+            rightPadding=self.TEXT_MARGIN,
+            topPadding=self.TEXT_MARGIN,
+        )
 
         # Draw the elements
         while len(self.elements) > 0:
@@ -503,16 +574,17 @@ class CardLayout(ABC):
         if len(self.elements) > 0:
             raise TemplateTooSmall("Template too small")
 
-    def _draw_front(self, canvas):
+    def _draw_front(self, canvas, x=0, y=0):
         canvas.saveState()
 
         # Draw red border
-        self._draw_single_border(canvas, 0, self.width, self.height)
+        self._draw_single_border(canvas, x, y, self.width, self.height)
 
         # Parchment background
         self._draw_single_background(
             canvas,
-            0,
+            x,
+            y,
             self.border_front,
             self.width,
             self.height,
@@ -542,11 +614,11 @@ class CardLayout(ABC):
             renderPDF.draw(
                 dnd_logo,
                 canvas,
-                (width - self.LOGO_WIDTH) / 2,
-                height - self.border_front[Border.TOP] + logo_margin,
+                x + (width - self.LOGO_WIDTH) / 2,
+                y + height - self.border_front[Border.TOP] + logo_margin,
             )
 
-        self._draw_front_frame(canvas, width, height)
+        self._draw_front_frame(canvas, x, y, width, height)
 
         # Artist
         if self.artist:
@@ -560,21 +632,21 @@ class CardLayout(ABC):
 
         canvas.restoreState()
 
-    def _draw_back(self, canvas):
+    def _draw_back(self, canvas, x, y):
         # Draw red border
-        self._draw_single_border(canvas, self.width, self.width, self.height)
+        self._draw_single_border(canvas, x, y, self.width, self.height)
 
         # Parchment background
         self._draw_single_background(
-            canvas, self.width, self.border_back, self.width, self.height
+            canvas, x, y, self.border_back, self.width, self.height
         )
 
-    def _draw_single_border(self, canvas, x, width, height):
+    def _draw_single_border(self, canvas, x, y, width, height):
         canvas.saveState()
         canvas.setFillColor(self.border_color)
         canvas.roundRect(
             x,
-            0,
+            y,
             width,
             height,
             max(self.CARD_CORNER_DIAMETER - self.bleed, 0.0 * mm),
@@ -584,7 +656,7 @@ class CardLayout(ABC):
         canvas.restoreState()
 
     def _draw_single_background(
-        self, canvas, x, margins, width, height, orientation=Orientation.NORMAL
+        self, canvas, x, y, margins, width, height, orientation=Orientation.NORMAL
     ):
         canvas.saveState()
 
@@ -594,7 +666,7 @@ class CardLayout(ABC):
         if orientation == Orientation.TURN90:
             clipping_mask.roundRect(
                 x + margins[Border.BOTTOM],
-                margins[Border.LEFT],
+                y + margins[Border.LEFT],
                 width - margins[Border.TOP] - margins[Border.BOTTOM],
                 height - margins[Border.RIGHT] - margins[Border.LEFT],
                 self.BACKGROUND_CORNER_DIAMETER,
@@ -602,7 +674,7 @@ class CardLayout(ABC):
         else:
             clipping_mask.roundRect(
                 x + margins[Border.LEFT],
-                margins[Border.BOTTOM],
+                y + margins[Border.BOTTOM],
                 width - margins[Border.RIGHT] - margins[Border.LEFT],
                 height - margins[Border.TOP] - margins[Border.BOTTOM],
                 self.BACKGROUND_CORNER_DIAMETER,
@@ -611,7 +683,7 @@ class CardLayout(ABC):
 
         if self.background_image_path is not None:
             canvas.drawImage(
-                self.background_image_path, x, 0, width=width, height=height, mask=None
+                self.background_image_path, x, y, width=width, height=height, mask=None
             )
 
         canvas.restoreState()
@@ -1031,16 +1103,16 @@ class ItemCardLayout(CardLayout):
         self.subcategory = subcategory
         self.description = description
 
-    def _draw_back(self, canvas):
-        super()._draw_back(canvas)
+    def _draw_back(self, canvas, x, y):
+        super()._draw_back(canvas, x, y)
 
         canvas.setFillColor("white")
         self.fonts.set_font(canvas, "category")
-        left_of_category_text = self.width + self.border_front[Border.LEFT]
-        width_of_category_text = canvas.stringWidth(self.category)
+        left_of_category_text = x + self.border_front[Border.LEFT]
+        width_of_category_text = y
         canvas.drawString(
-            left_of_category_text,
-            self.category_bottom,
+            x + self.border_back[Border.LEFT],
+            y + self.border_back[Border.TOP],
             self.category,
         )
 
@@ -1052,7 +1124,7 @@ class ItemCardLayout(CardLayout):
                 "({})".format(self.subcategory),
             )
 
-    def fill_frames(self, canvas):
+    def fill_frames(self, canvas, x, y):
 
         # Title
         self.elements.append(self._get_title_paragraph())
@@ -1152,12 +1224,14 @@ class CardGenerator(ABC):
         self._args = args
         self._kwargs = kwargs
 
-    def draw(self, canvas):
+    def draw(self, canvas, x=0, y=0, front=True):
         for size, split in itertools.product(self.sizes, [False, True]):
             try:
                 card_layout = size(*self._args, **self._kwargs)
-                card_layout.draw(canvas, split)
-                canvas.showPage()
+                if front:
+                    card_layout.draw_front(canvas, x, y)
+                else:
+                    card_layout.draw_back(canvas, split, x, y)
                 break
             except TemplateTooSmall:
                 # Reset the page
@@ -1251,7 +1325,7 @@ if __name__ == "__main__":
     else:
         fonts = FreeFonts()
 
-    canvas = canvas.Canvas(str(args.output_path), pagesize=(0, 0))
+    canvas = canvas.Canvas(str(args.output_path), pagesize=A4)
 
     with open(args.input, "r") as stream:
         try:
@@ -1259,6 +1333,8 @@ if __name__ == "__main__":
         except yaml.YAMLError as exc:
             print(exc)
             exit()
+
+    cards = []
 
     for entry in entries:
         image_path = None
@@ -1286,5 +1362,20 @@ if __name__ == "__main__":
                 bleed=args.bleed,
             )
 
-        card.draw(canvas)
+        cards += [card]
+
+    if len(cards) == 0:
+        print("No cards to generate")
+        exit()
+
+    max_cards = 9
+    pages_needed = math.ceil(len(cards) / max_cards)
+
+    for i in range(pages_needed):
+        c = cards[i * max_cards : i * max_cards + max_cards]
+        draw_cards_canvas(canvas, c, False)
+        canvas.showPage()
+        draw_cards_canvas(canvas, c, True)
+        canvas.showPage()
+
     canvas.save()
