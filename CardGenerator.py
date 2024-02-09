@@ -2,19 +2,13 @@ import math
 import yaml
 import argparse
 import pathlib
-import itertools
-
-from copy import copy
-from abc import ABC
 
 from reportlab.pdfbase.ttfonts import TTFError
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.units import mm
 from reportlab.pdfgen import canvas
-from reportlab.platypus import Paragraph, Table, TableStyle
-from reportlab.platypus.flowables import Flowable, Spacer
 from fonts import FreeFonts, AccurateFonts
-from card import TemplateTooSmall
+from generator import MonsterCard, ItemCard
 from card_item import *
 from card_monster import *
 
@@ -23,6 +17,23 @@ ASSET_DIR = pathlib.Path(__file__).parent.resolve() / "assets"
 
 
 def draw_cards_canvas(canvas, cards, invert=False):
+    def mix_array(arr, segment_size):
+        num_segments = len(arr) // segment_size + (
+            1 if len(arr) % segment_size != 0 else 0
+        )
+
+        new_order = []
+        for i in range(num_segments):
+            start = i * segment_size
+            end = min(start + segment_size, len(arr))
+            segment = arr[start:end]
+
+            segment = segment[::-1]
+
+            new_order.extend(segment)
+
+        return new_order
+
     card_width = 63 * mm
     card_height = 89 * mm
 
@@ -56,25 +67,6 @@ def draw_cards_canvas(canvas, cards, invert=False):
         i += 1
 
 
-def mix_array(arr, segment_size):
-    # Determine the number of segments
-    num_segments = len(arr) // segment_size + (1 if len(arr) % segment_size != 0 else 0)
-
-    # Process each segment
-    new_order = []
-    for i in range(num_segments):
-        start = i * segment_size
-        end = min(start + segment_size, len(arr))
-        segment = arr[start:end]
-
-        # Reverse the segment
-        segment = segment[::-1]
-
-        new_order.extend(segment)
-
-    return new_order
-
-
 def ExistingFile(p):
     """Argparse type for absolute paths that exist"""
     p = pathlib.Path(p).absolute()
@@ -82,39 +74,6 @@ def ExistingFile(p):
         return p
     else:
         raise argparse.ArgumentTypeError(f"`{p}` does not exist")
-
-
-class CardGenerator(ABC):
-    sizes = []  # Set by subclass
-
-    def __init__(self, *args, **kwargs):
-        self._args = args
-        self._kwargs = kwargs
-
-    def draw(self, canvas, x=0, y=0, front=True):
-        for size, split in itertools.product(self.sizes, [False, True]):
-            try:
-                card_layout = size(*self._args, **self._kwargs)
-                if front:
-                    card_layout.draw_front(canvas, x, y)
-                else:
-                    card_layout.draw_back(canvas, split, x, y)
-                break
-            except TemplateTooSmall:
-                # Reset the page
-                canvas._restartAccumulators()
-                canvas.init_graphics_state()
-                canvas.state_stack = []
-        else:
-            print("Could not fit {}".format(self._kwargs["title"]))
-
-
-class MonsterCard(CardGenerator):
-    sizes = [MonsterCardSmall, MonsterCardLarge, MonsterCardEpic, MonsterCardSuperEpic]
-
-
-class ItemCard(CardGenerator):
-    sizes = [ItemCardSmall]  # maybe more in the future
 
 
 if __name__ == "__main__":
