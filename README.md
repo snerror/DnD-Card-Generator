@@ -1,4 +1,7 @@
 # Dungeons & Dragons Card Generator
+
+> :warning: Pending new documentation :warning:
+
 A script to generate cards for Dungeons and Dragons in the style of the official Gale Force Nine ones.
 
 At this time, only monster & item cards are supported
@@ -7,7 +10,7 @@ At this time, only monster & item cards are supported
     content="https://raw.githubusercontent.com/ep1cman/DnD-Card-Generator/master/docs/monster.png" />
 ![Example Output](docs/monster.png)
 
-[![Buy me a coffee](https://www.buymeacoffee.com/assets/img/custom_images/black_img.png)](https://www.buymeacoffee.com/ep1cman)
+<!-- [![Buy me a coffee](https://www.buymeacoffee.com/assets/img/custom_images/black_img.png)](https://www.buymeacoffee.com/ep1cman) -->
 
 # Setup
 Before being able to use this script you will need to do the following:
