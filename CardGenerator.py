@@ -4,7 +4,7 @@ import argparse
 import pathlib
 
 from reportlab.pdfbase.ttfonts import TTFError
-from reportlab.lib.pagesizes import A4
+from reportlab.lib.pagesizes import A4, A3, A2, A1
 from reportlab.lib.units import mm
 from reportlab.pdfgen import canvas
 from fonts import FreeFonts, AccurateFonts
@@ -70,6 +70,15 @@ if __name__ == "__main__":
         default="single",
         choices=["single", "grid"],
         dest="export",
+    )
+    parser.add_argument(
+        "-c",
+        "--canvas",
+        help="Size of the canvas to export to. Available sizes: A1, A2, A3, A4",
+        action="store",
+        default="A4",
+        choices=["A4", "A3", "A2", "A1"],
+        dest="canvas",
     )
     background_group = parser.add_mutually_exclusive_group()
     background_group.add_argument(
@@ -144,7 +153,15 @@ if __name__ == "__main__":
         print("No cards to generate")
         exit()
 
-    export = ExportCards(cards, canvas)
+    canvas_size = A4
+    if args.canvas == "A1":
+        canvas_size = A1
+    if args.canvas == "A2":
+        canvas_size = A2
+    if args.canvas == "A3":
+        canvas_size = A3
+
+    export = ExportCards(cards, canvas, canvas_size=canvas_size)
     if args.export == "grid":
         export.export_grid()
     else:

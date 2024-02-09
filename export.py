@@ -9,9 +9,11 @@ from card_monster import *
 
 
 class ExportCards:
-    def __init__(self, cards, canvas):
+    def __init__(self, cards, canvas, canvas_size=A4, card_size="small"):
         self.cards = cards
         self.canvas = canvas
+        self.canvas_size = canvas_size
+        self.card_size = card_size
 
     def export_singles(self):
         self.canvas.setPageSize((get_card_width("small") * 2, get_card_height("small")))
@@ -23,7 +25,8 @@ class ExportCards:
 
     # TODO - This is a bit of a mess, needs to be refactored and finished
     def export_grid(self):
-        max_cards = 9
+        self.canvas.setPageSize(self.canvas_size)
+        max_cards = self.get_cards_per_row() * self.get_rows_per_page()
         pages_needed = math.ceil(len(self.cards) / max_cards)
 
         for i in range(pages_needed):
@@ -36,14 +39,13 @@ class ExportCards:
             self.draw_cards_grid(c, True)
 
     def draw_cards_grid(self, cards, invert=False):
-        card_width = 63 * mm
-        card_height = 89 * mm
+        card_width = get_card_width(self.card_size)
+        card_height = get_card_height(self.card_size)
+        cards_per_row = self.get_cards_per_row()
+        rows_per_page = self.get_rows_per_page()
 
-        cards_per_row = math.floor(A4[0] / card_width)
-        rows_per_page = math.floor(A4[1] / card_height)
-
-        x = 0 if invert == False else A4[0] - (card_width * cards_per_row)
-        y = A4[1] - card_height
+        x = 0 if invert == False else self.canvas_size[0] - (card_width * cards_per_row)
+        y = self.canvas_size[1] - card_height
 
         current_col, current_row = 0, 0
         i = 0
@@ -59,12 +61,16 @@ class ExportCards:
             if current_col >= cards_per_row:
                 current_row += 1
                 current_col = 0
-                x = 0 if invert == False else A4[0] - (card_width * cards_per_row)
+                x = (
+                    0
+                    if invert == False
+                    else self.canvas_size[0] - (card_width * cards_per_row)
+                )
                 y -= card_height
                 if current_row >= rows_per_page:
                     self.canvas.showPage()
                     current_row, current_col = 0, 0
-                    x, y = 0, A4[1] - card_height
+                    x, y = 0, self.canvas_size[1] - card_height
 
             i += 1
 
@@ -87,3 +93,9 @@ class ExportCards:
 
     def empty_card(self):
         return ItemCard(title="", subtitle="", description="", category="")
+
+    def get_cards_per_row(self):
+        return math.floor(self.canvas_size[0] / get_card_width(self.card_size))
+
+    def get_rows_per_page(self):
+        return math.floor(self.canvas_size[1] / get_card_height(self.card_size))
